@@ -61,8 +61,8 @@ public class JpaConfig {
 		DriverManagerDataSource dataSource = new DriverManagerDataSource();
 		dataSource.setDriverClassName("com.mysql.jdbc.Driver");
 		dataSource.setUrl(databaseUrl);
-		dataSource.setUsername(databaseUser);
-		dataSource.setPassword(databasePassword);
+		dataSource.setUsername("rpistatusdb");
+		dataSource.setPassword("rpistatusdb");
 		return dataSource;
 	}
 

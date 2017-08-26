@@ -1,5 +1,7 @@
 package org.hhg.rpi.reportservice.reporting.impl;
 
+import java.util.Date;
+
 import org.hhg.rpi.reportservice.reporting.ReportingSubServiceInterface;
 import org.hhg.rpi.reportservice.utils.Constants;
 import org.springframework.beans.factory.annotation.Value;
@@ -98,7 +100,7 @@ public class TwitterLogServiceImpl implements ReportingSubServiceInterface {
 	}
 
 	private String generateMessage(String prefix, String messageToSend) {
-		String newMessage = prefix + ": " + messageToSend;
+		String newMessage = "("+Constants.DATE_FORMAT.format(new Date())+") "+prefix + ": " + messageToSend;
 		if (newMessage.length() > maxCharsPerUpdate)
 			newMessage = newMessage.substring(0, maxCharsPerUpdate);
 

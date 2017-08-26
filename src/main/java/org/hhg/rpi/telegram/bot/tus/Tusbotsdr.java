@@ -52,14 +52,20 @@ public class Tusbotsdr {
 	public void getUpdates() {
 		HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("offset", lastHandledUpdateId + 1);
+		try{
 		TelegramResponse item = restTemplate.getForObject(TELEGRAM_URL_PREFIX + botApiKey + TELEGRAM_GET_UPDATES_SUFFIX,
 				TelegramResponse.class, params);
-		if (item != null && item.getOk()) {
+		if (item != null && item.getOk() && item.getResult().size() > 0) {
 			for (TelegramUpdate update : item.getResult()) {
 				lastHandledUpdateId = update.getUpdateId();
 				processUpdate(update);
 			}
-		} else {
+
+			logService.info("Processed Telegram Bot Update: "+item.getResult().size()+" messages replied.");
+		} 
+		
+		}catch(Exception ex){
+
 			logService.error("Error retrieving Telegram updates for bot.");
 		}
 	}
@@ -68,6 +74,7 @@ public class Tusbotsdr {
 		if (update.getMessage() != null) {
 			processMessage(update.getMessage());
 		}
+		
 	}
 
 	public void processMessage(TelegramMessage message) {

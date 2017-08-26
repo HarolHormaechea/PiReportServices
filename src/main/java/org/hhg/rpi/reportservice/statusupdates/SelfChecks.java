@@ -1,7 +1,5 @@
 package org.hhg.rpi.reportservice.statusupdates;
 
-import java.util.Date;
-
 import org.hhg.rpi.reportservice.reporting.LogServiceInterface;
 import org.hhg.rpi.reportservice.utils.Constants;
 import org.springframework.beans.BeansException;
@@ -39,9 +37,9 @@ public class SelfChecks implements ApplicationListener<ApplicationEvent>, Applic
 			return;
 		
 		if (applicationEvent instanceof ContextRefreshedEvent) {
-			logService.info("("+Constants.DATE_FORMAT.format(new Date())+") "+Constants.SOCIAL_STARTUP_MESSAGE);
+			logService.info(Constants.SOCIAL_STARTUP_MESSAGE);
 		} else if (applicationEvent instanceof ContextClosedEvent) {
-			logService.info("("+Constants.DATE_FORMAT.format(new Date())+") "+Constants.SOCIAL_SHUTDOWN_MESSAGE);
+			logService.info(Constants.SOCIAL_SHUTDOWN_MESSAGE);
 		}
 	}
 
