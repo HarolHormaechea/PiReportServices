@@ -60,6 +60,7 @@ public class TwitterLogServiceImpl implements ReportingSubServiceInterface {
 		TwitterFactory tf = new TwitterFactory(cb.build());
 		twitter = tf.getInstance();
 		try {
+			@SuppressWarnings(value = { "unused" })
 			RequestToken requestToken = twitter.getOAuthRequestToken();
 		} catch (TwitterException | IllegalStateException ie) {
 

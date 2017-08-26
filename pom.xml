@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.hhg.rpi</groupId>
 	<artifactId>reportservice</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.5</version>
 	<packaging>war</packaging>
 	<name>reportservice</name>
 	<description>Reporting service for raspberry pi</description>
@@ -18,6 +18,12 @@
 	</properties>
 
 	<dependencies>
+	
+		<dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.library}</version>
+        </dependency>
 		<!-- Twitter API http://twitter4j.org/en/index.html -->
 		<dependency>
 			<groupId>org.twitter4j</groupId>

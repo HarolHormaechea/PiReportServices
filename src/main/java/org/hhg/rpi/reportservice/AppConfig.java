@@ -6,6 +6,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
@@ -20,9 +21,10 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
  */
 // This tells Spring where to look for components. It will
 // also scan subpackages.
-@ComponentScan(basePackages = "org.hhg.rpi.reportservice")
+@ComponentScan(basePackages = "org.hhg.rpi")
 // Will allow Spring to link requests to controllers.
 @EnableWebMvc
+@EnableScheduling
 @Configuration
 //"reportservice_config" is an environment variable (a.k.a. path variable)
 //set to the folder containing the application.properties file. You have

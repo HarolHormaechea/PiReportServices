@@ -34,4 +34,10 @@ public class TestRestController {
 		entityManager.persist(ss);
 		return "If this message is shown, congratulations! A new item was added to the database.";
 	}
+	
+
+//	@RequestMapping("/")
+//	public String realPage(){
+//		return "";
+//	}
 }
