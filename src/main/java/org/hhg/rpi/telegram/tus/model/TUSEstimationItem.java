@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TUSEstimationResponse implements Comparable<TUSEstimationResponse> {
+public class TUSEstimationItem implements Comparable<TUSEstimationItem> {
 
 	@JsonProperty(value="ayto:tiempo1")
 	private Integer firstTime;
@@ -107,7 +107,7 @@ public class TUSEstimationResponse implements Comparable<TUSEstimationResponse> 
 	}
 
 	@Override
-	public int compareTo(TUSEstimationResponse o) {
+	public int compareTo(TUSEstimationItem o) {
 		return this.getFirstTime().compareTo(o.getFirstTime());
 	}
 }

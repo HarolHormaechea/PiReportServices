@@ -7,27 +7,29 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TUSResponse {
+public class TUSStopListResponse {
 	@JsonProperty(value="summary")
 	private TUSResponseSummary summary;
 	
 	@JsonProperty(value="resources")
-	private SortedSet<TUSEstimationResponse> results = new TreeSet<TUSEstimationResponse>();
-	
-	
+	private SortedSet<TUSStopItem> results = new TreeSet<TUSStopItem>();
+
 	public TUSResponseSummary getSummary() {
 		return summary;
 	}
+
 	public void setSummary(TUSResponseSummary summary) {
 		this.summary = summary;
 	}
-	public SortedSet<TUSEstimationResponse> getResults() {
+
+	public SortedSet<TUSStopItem> getResults() {
 		return results;
 	}
-	public void setResults(SortedSet<TUSEstimationResponse> results) {
+
+	public void setResults(SortedSet<TUSStopItem> results) {
 		this.results = results;
 	}
 	
 	
-
+	
 }

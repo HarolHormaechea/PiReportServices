@@ -38,6 +38,7 @@ public class DynamicLogServiceImpl implements LogServiceInterface {
 		if(twitter != null){
 			servicesList.add(twitter);
 		}
+		servicesList.add(new BasicLogServiceImpl());
 			
 	}
 	
@@ -68,6 +69,6 @@ public class DynamicLogServiceImpl implements LogServiceInterface {
 	@Override
 	public void error(String message) {
 		for(ReportingSubServiceInterface rService : servicesList)
-			rService.info(message);
+			rService.error(message);
 	}
 }

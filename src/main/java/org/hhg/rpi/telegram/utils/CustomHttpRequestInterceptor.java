@@ -12,8 +12,12 @@ public class CustomHttpRequestInterceptor implements ClientHttpRequestIntercepto
 	@Override
 	public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution)
 			throws IOException {
-		
-		return execution.execute(request, body);
+
+		ClientHttpResponse response = execution.execute(request, body);
+//		byte[] bodyThing = new byte[10240];
+//		response.getBody().read(bodyThing);
+//		String str = new String(bodyThing);
+		return response;
 	}
 
 }
