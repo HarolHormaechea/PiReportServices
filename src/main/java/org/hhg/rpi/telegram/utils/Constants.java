@@ -28,6 +28,16 @@ public final class Constants {
 	 * This is the number of milliseconds between bus stops cache updates.
 	 * 
 	 * For performance reasons, bus stop information will not be retrieved per user request.
+	 * 
+	 * Updated every 6 hours (define in milliseconds)
 	 */
-	public static final long TUS_STATION_UPDATE_RATE = 600_000L;
+	public static final long TUS_STATION_UPDATE_RATE = 6 * 60 * 60 * 1000L;
+	
+	
+	/**
+	 * This is the number of milliseconds between bus alarms checks.
+	 * 
+	 * Checks every minute.
+	 */
+	public static final long TUS_ALARM_CHECK_RATE = 10000L;//1 * 60 * 1000L;
 }

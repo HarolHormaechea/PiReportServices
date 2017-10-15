@@ -1,9 +1,6 @@
 
 package org.hhg.rpi.telegram.bot.tus;
 
-import static org.hhg.rpi.telegram.utils.Constants.TELEGRAM_GET_UPDATES_SUFFIX;
-import static org.hhg.rpi.telegram.utils.Constants.TELEGRAM_SEND_MESSAGE_SUFFIX;
-import static org.hhg.rpi.telegram.utils.Constants.TELEGRAM_URL_PREFIX;
 import static org.hhg.rpi.telegram.utils.Constants.TUS_UPDATE_TOLERANCE;
 
 import java.time.temporal.ChronoUnit;
@@ -23,13 +20,9 @@ import org.hhg.rpi.telegram.model.TelegramUpdate;
 import org.hhg.rpi.telegram.tus.model.BusStationInfo;
 import org.hhg.rpi.telegram.tus.model.TUSBusEstimationResponse;
 import org.hhg.rpi.telegram.tus.model.TUSEstimationItem;
-import org.hhg.rpi.telegram.utils.CustomHttpRequestInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,16 +39,13 @@ public class Tusbotsdr {
 	@Autowired
 	private TUSDataRetrievalServiceInterface busService;
 	
-	@Value("${rpi.telegram.bot.id}")
-	private String botApiKey;
-
-	private RestTemplate restTemplate = new RestTemplate();
-	{
-		restTemplate.setInterceptors(
-				Arrays.asList(new CustomHttpRequestInterceptor[] { new CustomHttpRequestInterceptor() }));
-		restTemplate.setMessageConverters(Arrays.asList(new MappingJackson2HttpMessageConverter()));
-	}
-
+	@Autowired
+	private TelegramMessageServiceInterface messageService;
+	
+	@Autowired
+	private TUSAlarmServiceInterface alarmService;
+	
+	
 	public Tusbotsdr() {
 
 	}
@@ -65,8 +55,7 @@ public class Tusbotsdr {
 		HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("offset", lastHandledUpdateId + 1);
 		try{
-		TelegramResponse item = restTemplate.getForObject(TELEGRAM_URL_PREFIX + botApiKey + TELEGRAM_GET_UPDATES_SUFFIX,
-				TelegramResponse.class, params);
+		TelegramResponse item = messageService.getUpdates(lastHandledUpdateId++);
 		if (item != null && item.getOk() && item.getResult().size() > 0) {
 			for (TelegramUpdate update : item.getResult()) {
 				lastHandledUpdateId = update.getUpdateId();
@@ -105,11 +94,59 @@ public class Tusbotsdr {
 	 */
 	public void processMessage(TelegramMessage message) {
 		String queryText = extractQueryMessage(message.getText());
-		String responseText = "";
-		String markupReply = "";
+		MessageResult result = null;
+		// First, we will check if we have a /command command. If we don't, we will assume we are asked for stations.
+		if(queryText.length() > 6 && queryText.substring(0, 7).equals("/alarma")){
+			result = initAlarm(message);
+		}else{
+			result = executeQuery(message);
+			
+		}
+		
+		messageService.sendMessage(message.getFromChat().getId(), result.getText(), result.getMarkup(), Object.class);
+	}
+
+	
+	/**
+	 * Initializes a new alarm.
+	 * 
+	 * The message must be formatted with /alarma {0} {1} {2}
+	 * {0}: Bus Stop
+	 * {1}: Bus Line 
+	 * {2}: Minutes left for the bus
+	 * 
+	 * @param message
+	 * @return
+	 */
+	private MessageResult initAlarm(TelegramMessage message) {
+		MessageResult result = new MessageResult();
+		String[] msg = message.getText().split(" ");
+		
+		try{
+			Integer stop = Integer.valueOf(msg[1]);
+			Integer minutes = Integer.valueOf(msg[3]);
+			String line = msg[2];
+			
+			alarmService.createAlarm(message.getFromUser().getId(), message.getFromChat().getId(), line, stop, minutes);
+			result.setText("Se ha creado una alarma para el próximo autobús de línea "+line+" y la parada "+busService.retrieveBusStopInformation(stop).getStationName()+". La alarma se enviará cuando falten como máximo "+minutes+" minutos para que llegue.");
+		}catch(Exception ex){
+			result.setText("No se proveyó un formato correcto. El formato de esta petición debe ser el siguiente:\n/alarma A B C\nA: Parada (el código)\nB: Línea (código)\nC: Minutos que deben faltar para enviar alarma de bus.\n Por ejemplo: /alarma 42 1 5\nGenerará una alarma que avisará con un mensaje del próximo autobús de la línea 1 que pase por la parada 42 al que le falten 5 minutos para llegar.");
+		}
+		return result;
+	}
+
+	/**
+	 * Executes a bus query
+	 * 
+	 * @param message
+	 * @return
+	 */
+	private MessageResult executeQuery(TelegramMessage message) {
+		MessageResult result = new MessageResult();
+		String queryText = extractQueryMessage(message.getText());
 		try{
 			Integer requestedBusStopId = Integer.parseInt(queryText);
-			responseText = retrieveBusInformation(requestedBusStopId, message.getFromUser().getFirstName());
+			result.setText(retrieveBusInformation(requestedBusStopId, message.getFromUser().getFirstName()));
 		}catch(NumberFormatException ex){
 			// If we are not given a proper number as stop ID, we attempt to look for the closest station name
 			// for the input text.
@@ -117,10 +154,10 @@ public class Tusbotsdr {
 			
 			if(matchingStops.size() == 0){
 				// If no stations match this given name, meeec...
-				responseText = "Disculpa, no se encontró ninguna parada con este nombre.";
+				result.setText("Disculpa, no se encontró ninguna parada con este nombre.");
 			}else if(matchingStops.size() == 1){
 				// If our search returns exactly one station by this name, we will use its number as query value.
-				responseText = retrieveBusInformation(matchingStops.get(0).getStationNumber(),  message.getFromUser().getFirstName());
+				result.setText(retrieveBusInformation(matchingStops.get(0).getStationNumber(),  message.getFromUser().getFirstName()));
 			}else{
 				// If our search returns  more than one stop, we will send back a keyboard with the different options received.
 				TelegramInlineKeyboardMarkup inlineKeyboard = new TelegramInlineKeyboardMarkup();
@@ -130,24 +167,17 @@ public class Tusbotsdr {
 					button.setCallbackData(matchingStation.getStationNumber().toString());
 					inlineKeyboard.getKeyboard().add(new LinkedList<TelegramInlineKeyboardButton>(Arrays.asList(button)));
 				}
-				responseText = "Se encontraron varias paradas con nombre similar. Por favor, elige la correcta de entre las opciones.";
+				result.setText("Se encontraron varias paradas con nombre similar. Por favor, elige la correcta de entre las opciones.");
 				try {
-					markupReply = new ObjectMapper().writeValueAsString(inlineKeyboard);
+					result.setMarkup(new ObjectMapper().writeValueAsString(inlineKeyboard));
 				} catch (JsonProcessingException e) {
 					logService.error("Error serializing choice keyboard: "+e.getMessage());
 				}
 			}
-			
 		}
-		HashMap<String, Object> params = new HashMap<String, Object>();
-		params.put("chat_id", message.getFromChat().getId());
-		params.put("text", responseText);
-		params.put("markup", markupReply);
-		restTemplate.postForObject(TELEGRAM_URL_PREFIX + botApiKey + TELEGRAM_SEND_MESSAGE_SUFFIX,
-				null, Object.class, params);
+		return result;
 	}
 
-	
 	/**
 	 * Retrieves information about the next buses due to arrive at the specified bus stop.
 	 * 
@@ -185,5 +215,25 @@ public class Tusbotsdr {
 			responseText = "No fue provisto un numero de parada valido. Hay que introducir solo el numero (por ejemplo: 42)";
 		}
 		return responseText;
+	}
+	
+	
+	class MessageResult{
+		private String text;
+		private String markup;
+		public String getText() {
+			return text;
+		}
+		public void setText(String text) {
+			this.text = text;
+		}
+		public String getMarkup() {
+			return markup;
+		}
+		public void setMarkup(String markup) {
+			this.markup = markup;
+		}
+		
+		
 	}
 }

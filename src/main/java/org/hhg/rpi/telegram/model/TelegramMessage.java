@@ -2,8 +2,10 @@ package org.hhg.rpi.telegram.model;
 
 import java.util.Date;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+@JsonIgnoreProperties(ignoreUnknown= true)
 public class TelegramMessage {
 	@JsonProperty(value = "message_id")
 	private Long messageId;
@@ -15,9 +17,7 @@ public class TelegramMessage {
 	private Date date;
 	@JsonProperty(value = "text")
 	private String text;
-
-
-
+	
 	public Long getMessageId() {
 		return messageId;
 	}
