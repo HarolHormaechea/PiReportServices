@@ -35,11 +35,12 @@ public class TelegramMessageService implements TelegramMessageServiceInterface {
 	}
 
 	@Override
-	public <T> T sendMessage(Long chatId, String text, String markup, Class<T> clazz) {
+	public <T> T sendMessage(Long repliedMessageId, Long chatId, String text, String markup, Class<T> clazz) {
 		HashMap<String, Object> params = new HashMap<String, Object>();
 		params.put("chat_id", chatId);
 		params.put("text", text);
 		params.put("markup", markup);
+		params.put("replyId", repliedMessageId);
 		return (T) restTemplate.postForObject(TELEGRAM_URL_PREFIX + botApiKey + TELEGRAM_SEND_MESSAGE_SUFFIX,
 				null, clazz, params);
 	}

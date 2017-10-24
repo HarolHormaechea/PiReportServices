@@ -3,6 +3,7 @@ package org.hhg.rpi.telegram.bot.tus;
 
 import static org.hhg.rpi.telegram.utils.Constants.TUS_UPDATE_TOLERANCE;
 
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.GregorianCalendar;
@@ -12,6 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.hhg.rpi.reportservice.reporting.LogServiceInterface;
+import org.hhg.rpi.telegram.model.TelegramAlarm;
+import org.hhg.rpi.telegram.model.TelegramAlarm.ALARM_TYPE;
 import org.hhg.rpi.telegram.model.TelegramInlineKeyboardButton;
 import org.hhg.rpi.telegram.model.TelegramInlineKeyboardMarkup;
 import org.hhg.rpi.telegram.model.TelegramMessage;
@@ -96,16 +99,95 @@ public class Tusbotsdr {
 		String queryText = extractQueryMessage(message.getText());
 		MessageResult result = null;
 		// First, we will check if we have a /command command. If we don't, we will assume we are asked for stations.
-		if(queryText.length() > 6 && queryText.substring(0, 7).equals("/alarma")){
-			result = initAlarm(message);
+		if(queryText.length() >= 7 && queryText.substring(0, 7).equals("/alarma")){
+			result = initSingleAlarm(message);
+		}else if(queryText.length() >= 6 && queryText.substring(0, 6).equals("/aviso")){
+			result = initRepeatingAlarm(message);
+		}else if(queryText.length() >= 7 && queryText.substring(0, 7).equals("/config")){
+			result = checkAlarmConfig(message.getFromChat().getId());
+		}else if(queryText.contains("🔕 Silenciar alarma")){
+			
+		}else if(queryText.contains("🔔 Reactivar alarma")){
+			
+		}else if(queryText.contains("❌ Eliminar alarma")){
+			
 		}else{
 			result = executeQuery(message);
-			
 		}
 		
-		messageService.sendMessage(message.getFromChat().getId(), result.getText(), result.getMarkup(), Object.class);
+		messageService.sendMessage(message.getMessageId(), message.getFromChat().getId(), result.getText(), result.getMarkup(), Object.class);
 	}
 
+	/**
+	 * Retrieves the list of alarms created in this chat as buttons, so their configuration can be changed.
+	 * 
+	 * @param id
+	 * @param id2
+	 * @return
+	 */
+	private MessageResult checkAlarmConfig(Long chatId) {
+		MessageResult result = new MessageResult();
+		List<TelegramAlarm> chatAlarms = alarmService.findAlarmsByChat(chatId);
+		if(chatAlarms != null && chatAlarms.size() > 0){
+			result.setText("Se encontraron varias alarmas configuradas. Puedes usar los botones para revisarlas o eliminarlas usando su numero de alarma.");
+			TelegramInlineKeyboardMarkup inlineKeyboard = new TelegramInlineKeyboardMarkup();
+			//TelegramReplyKeyboardMarkup keyboard = new TelegramReplyKeyboardMarkup();
+			
+			int i = 1;
+			for(TelegramAlarm alarm : chatAlarms){
+				result.setText(result.getText() + "\nAlarma nº "+i+":\n   - Parada: "+busService.retrieveBusStopInformation(alarm.getBusStop()).getStationName()+"\n   - Linea: "+alarm.getBusLine());
+				
+				
+				if(ALARM_TYPE.REPEATING.equals(alarm.getType())){
+					result.setText(result.getText() + result.getText() + "\n   - Hora de notificación: "+alarm.getAlarmReferenceTime());
+				}
+				
+				LinkedList<TelegramInlineKeyboardButton> row = new LinkedList<TelegramInlineKeyboardButton>();
+				
+				TelegramInlineKeyboardButton buttonToggleActivation = new TelegramInlineKeyboardButton();
+				buttonToggleActivation.setText(alarm.isActive() ? "🔕 Silenciar alarma "+i : "🔔 Reactivar alarma "+i);
+				buttonToggleActivation.setCallbackData(alarm.isActive() ? "/config silenciaralarma "+i : "/config activaralarma "+i);
+				
+				TelegramInlineKeyboardButton buttonRemove = new TelegramInlineKeyboardButton();
+				buttonRemove.setText("❌ Eliminar alarma"+i);
+				buttonRemove.setCallbackData("/config eliminaralarma "+i);
+				
+				row.add(buttonToggleActivation);
+				row.add(buttonRemove);
+				
+				inlineKeyboard.getKeyboard().add(row);
+				i++;
+			}
+			try {
+				result.setMarkup(new ObjectMapper().writeValueAsString(inlineKeyboard));
+			} catch (JsonProcessingException e) {
+				logService.error("Error serializing choice keyboard: "+e.getMessage());
+			}
+		}else{
+			result.setText("No hay alarmas configuradas en este chat.");
+		}
+		return result;
+	}
+
+	
+	private MessageResult deactivateAlarm(TelegramMessage message){
+		MessageResult result = new MessageResult();
+		//alarmService.deactivateUserAlarm(Long userId, Long id);
+		return result;
+	}
+	
+	private MessageResult activateAlarm(TelegramMessage message){
+		MessageResult result = new MessageResult();
+		
+		return result;
+	}
+	
+	private MessageResult removeAlarm(TelegramMessage message){
+		MessageResult result = new MessageResult();
+		
+		return result;
+	}
+	
 	
 	/**
 	 * Initializes a new alarm.
@@ -118,7 +200,7 @@ public class Tusbotsdr {
 	 * @param message
 	 * @return
 	 */
-	private MessageResult initAlarm(TelegramMessage message) {
+	private MessageResult initSingleAlarm(TelegramMessage message) {
 		MessageResult result = new MessageResult();
 		String[] msg = message.getText().split(" ");
 		
@@ -127,13 +209,45 @@ public class Tusbotsdr {
 			Integer minutes = Integer.valueOf(msg[3]);
 			String line = msg[2];
 			
-			alarmService.createAlarm(message.getFromUser().getId(), message.getFromChat().getId(), line, stop, minutes);
-			result.setText("Se ha creado una alarma para el pr�ximo autob�s de l�nea "+line+" y la parada "+busService.retrieveBusStopInformation(stop).getStationName()+". La alarma se enviar� cuando falten como m�ximo "+minutes+" minutos para que llegue.");
+			alarmService.createAlarm(message.getFromUser().getId(), message.getFromChat().getId(), line, stop, minutes, false, null);
+			result.setText("Se ha creado una alarma para el próximo autobús de línea "+line+" y la parada "+busService.retrieveBusStopInformation(stop).getStationName()+". La alarma se enviará cuando falten como máximo "+minutes+" minutos para que llegue.");
 		}catch(Exception ex){
-			result.setText("No se provey� un formato correcto. El formato de esta petici�n debe ser el siguiente:\n/alarma A B C\nA: Parada (el c�digo)\nB: L�nea (c�digo)\nC: Minutos que deben faltar para enviar alarma de bus.\n Por ejemplo: /alarma 42 1 5\nGenerar� una alarma que avisar� con un mensaje del pr�ximo autob�s de la l�nea 1 que pase por la parada 42 al que le falten 5 minutos para llegar.");
+			result.setText("No se proveyó un formato correcto. El formato de esta petición debe ser el siguiente:\n/alarma A B C\nA: Parada (el código)\nB: Línea (código)\nC: Minutos que deben faltar para enviar alarma de bus.\n Por ejemplo: /alarma 42 1 5\nGenerará una alarma que avisará con un mensaje del próximo autobús de la línea 1 que pase por la parada 42 al que le falten 5 minutos para llegar.");
 		}
 		return result;
 	}
+	
+	
+	/**
+	 * Initializes a new repeating daily alarm, which will warn its user about the next bus of the requested line
+	 * arriving at the stop after the given hour.
+	 * 
+	 * The message must be formatted with /aviso {0} {1} {2}
+	 * {0}: Bus Stop (ex. "42")
+	 * {1}: Bus Line (ex. "6C1")
+	 * {2}: HOUR:TIME (ex. "15:25")
+	 * 
+	 * @param message
+	 * @return
+	 */
+	private MessageResult initRepeatingAlarm(TelegramMessage message) {
+		MessageResult result = new MessageResult();
+		String[] msg = message.getText().split(" ");
+		
+		try{
+			Integer stop = Integer.valueOf(msg[1]);
+			String line = msg[2];
+			String[] refTimeStr = msg[3].split(":");
+			LocalTime time = LocalTime.of(Integer.valueOf(refTimeStr[0]), Integer.valueOf(refTimeStr[1]));
+			
+			alarmService.createAlarm(message.getFromUser().getId(), message.getFromChat().getId(), line, stop, null, true, time);
+			result.setText("Se ha creado una alarma con repeticion que avisará del próximo autobús de línea "+line+" que pase por la parada "+busService.retrieveBusStopInformation(stop).getStationName()+" a partir de las "+msg[3]);
+		}catch(Exception ex){
+			result.setText("No se proveyó un formato correcto. El formato de esta petición debe ser el siguiente:\n/aviso A B C\nA: Parada (el código)\nB: Línea (código)\nC: Hora a la que se debe comprobar los buses (HH:MM).\n Por ejemplo: /aviso 42 1 15:15\nGenerará una alarma que avisará con un mensaje cada día a las 15:15 sobre el próximo autobús de la línea 1 que pase por la parada 42 .");
+		}
+		return result;
+	}
+
 
 	/**
 	 * Executes a bus query
@@ -154,7 +268,7 @@ public class Tusbotsdr {
 			
 			if(matchingStops.size() == 0){
 				// If no stations match this given name, meeec...
-				result.setText("Disculpa, no se encontr� ninguna parada con este nombre.");
+				result.setText("Disculpa, no se encontró ninguna parada con este nombre.");
 			}else if(matchingStops.size() == 1){
 				// If our search returns exactly one station by this name, we will use its number as query value.
 				result.setText(retrieveBusInformation(matchingStops.get(0).getStationNumber(),  message.getFromUser().getFirstName()));
@@ -186,7 +300,7 @@ public class Tusbotsdr {
 	 * @return
 	 */
 	private String retrieveBusInformation(Integer query, String username) {
-		String responseText = username+", aqu� tienes el resultado de tu consulta ";
+		String responseText = username+", aquí tienes el resultado de tu consulta ";
 		try {
 			// We retrieve the next buses.
 			TUSBusEstimationResponse infoBuses = busService.retrieveBusInformation(query);
@@ -203,7 +317,7 @@ public class Tusbotsdr {
 					if (ChronoUnit.MINUTES.between(estimacion.getLastUpdated().toInstant(),
 							currentDate.toInstant()) < TUS_UPDATE_TOLERANCE) {
 						estimacion.getLastUpdated().getTime();
-						responseText += " - Linea " + estimacion.getBusLine() + ": " + estimacion.getFirstTime() / 60
+						responseText += " 🚌  Linea " + estimacion.getBusLine() + ": " + estimacion.getFirstTime() / 60+" minutos."
 								+ "\n";
 					}
 				}
